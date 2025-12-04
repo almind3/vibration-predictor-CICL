@@ -1,8 +1,5 @@
 name: CI/CD - Test & Deploy to Hugging Face Space
 
-permissions:
-  contents: write
-
 on:
   push:
     branches: [ "main" ]
@@ -11,7 +8,7 @@ on:
   workflow_dispatch:      
 
 permissions:
-  contents: read          
+  contents: write          
   id-token: write         
 
 concurrency:
