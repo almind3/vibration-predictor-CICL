@@ -67,7 +67,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install huggingface_hub
 
-      - name: Push to hub
+      - name: Configure HF 
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git remote set-url origin https://alrazumov:<token>@huggingface.co/spaces/alrazumov/vibration-predictor
+          git pull origin
+          git push --force space main
+
+
+      - name: Configure HF 
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: git push https://alrazumov:$HF_TOKEN@huggingface.co/spaces/alrazumov/vibration-predictor main 
