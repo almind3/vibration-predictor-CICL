@@ -1,5 +1,8 @@
 name: CI/CD - Test & Deploy to Hugging Face Space
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ "main" ]
@@ -25,7 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        - uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -51,55 +56,58 @@ jobs:
           pytest -q --maxfail=1 tests/
           
   deploy:
-    name: Deploy to Hugging Face Space
-    needs: test-and-lint
-    runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' }}   # only deploy from main
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      name: Deploy to Hugging Face Space
+      needs: test-and-lint
+      runs-on: ubuntu-latest
+      if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install dependencies (for the sync script)
-        run: |
-          python -m pip install --upgrade pip
-          pip install git-lfs huggingface_hub
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
 
-      - name: Configure HF token
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          mkdir -p ~/.huggingface
-          echo $HF_TOKEN > ~/.huggingface/token
+        - name: Install dependencies for deployment
+          run: |
+            python -m pip install --upgrade pip
+            pip install git-lfs huggingface_hub
 
-      - name: Clone HF Space repo
-        env:
-          HF_SPACE: ${{ env.HF_SPACE }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          set -e
-          TMPDIR=$(mktemp -d)
-          git clone https://$HF_TOKEN@huggingface.co/spaces/${HF_SPACE} ${TMPDIR}/space || \
-            (cd ${TMPDIR} && git clone https://$HF_TOKEN@huggingface.co/spaces/${HF_SPACE} space)
-          ls -la ${TMPDIR}/space
+        - name: Configure HF token
+          env:
+            HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          run: |
+            mkdir -p ~/.huggingface
+            echo $HF_TOKEN > ~/.huggingface/token
 
-      - name: Sync repo contents to Space
-        env:
-          HF_SPACE: ${{ env.HF_SPACE }}
-        run: |
-          TMPDIR=$(mktemp -d)
-          # clone again into tmp for clean write
-          git clone https://$HF_TOKEN@huggingface.co/spaces/${HF_SPACE} ${TMPDIR}/space
-          rsync -av --delete $GITHUB_WORKSPACE/ ${TMPDIR}/space/
-          cd ${TMPDIR}/space
-          git add -A
-          git commit -m "Auto-deploy from GitHub Actions: $GITHUB_SHA" || true
-          git push origin main
+        - name: Set Git identity
+          run: |
+            git config user.email "actions@github.com"
+            git config user.name "github-actions[bot]"
 
-      - name: Wait for HF build to start (optional)
-        run: |
-          echo "Deploy triggered on Hugging Face Spaces. Check the Space page for build logs."
+        - name: Clone HF Space repo
+          env:
+            HF_SPACE: ${{ env.HF_SPACE }}
+            HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          run: |
+            set -e
+            TMPDIR=$(mktemp -d)
+            git clone https://$HF_TOKEN@huggingface.co/spaces/${HF_SPACE} ${TMPDIR}/space
 
-      - name: Post-deploy smoke test (optional)
-        run: |
-          # optional: sleep 10 and curl the Space URL; skip for long builds
-          echo "You can add a poll here to verify the deployed endpoint."
+        - name: Sync contents to Space
+          env:
+            HF_SPACE: ${{ env.HF_SPACE }}
+            HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          run: |
+            TMPDIR=$(mktemp -d)
+            git clone https://$HF_TOKEN@huggingface.co/spaces/${HF_SPACE} ${TMPDIR}/space
+
+            rsync -av --delete \
+              --exclude '.git/' \
+              --exclude '.github/' \
+              $GITHUB_WORKSPACE/ ${TMPDIR}/space/
+
+            cd ${TMPDIR}/space
+            git add -A
+            git commit -m "Auto-deploy from GitHub Actions: $GITHUB_SHA" || true
+            git push origin main
+
