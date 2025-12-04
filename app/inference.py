@@ -3,10 +3,9 @@ import joblib
 import numpy as np
 import os
 
-BASE_DIR = os.path.dirname(__file__)
-
-MODEL_PATH = os.path.join(BASE_DIR, "model", "xgb_model.json")
-SCALER_PATH = os.path.join(BASE_DIR, "model", "scaler.joblib")
+here = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(here, "..", "model", "xgb_model.json")
+SCALER_PATH = os.path.join(here,"..", "model", "scaler.joblib")
 
 def load_model():
     booster = xgb.Booster()
