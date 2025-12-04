@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # copy the rest of the app folder
 COPY ./app ./app
-COPY ./app/model ./app/model
+COPY ./model ./model
 
 # expose port
 EXPOSE 8080
