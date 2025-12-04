@@ -1,3 +1,4 @@
+---
 title: Vibration Predictor
 emoji: "⚡"
 colorFrom: "blue"
@@ -6,7 +7,7 @@ sdk: docker
 app_port: 8080
 app_file: app.py
 pinned: false
-
+---
 
 
 Vibration-Based Bearing Failure Predictor <br />
